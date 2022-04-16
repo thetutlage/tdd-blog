@@ -1,0 +1,257 @@
+openapi: 3.0.0
+info:
+  description: "API spec for a demo blog"
+  version: v1
+  title: AdonisJS demo blog
+tags:
+  - name: 'Posts'
+
+paths:
+  /posts:
+    get:
+      tags:
+        - Posts
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: number
+        - in: query
+          name: per_page
+          schema:
+            type: number
+      responses:
+        "200":
+          $ref: '#/components/responses/posts'
+    post:
+      tags:
+        - Posts
+      requestBody:
+          $ref: '#/components/requestBodies/create_post'
+      responses:
+        "201":
+          $ref: '#/components/responses/post'
+        "401":
+          $ref: '#/components/responses/unauthorized'
+        "422":
+          $ref: '#/components/responses/validation_error'
+
+  /posts/{slug}:
+    parameters:
+      - in: path
+        name: slug
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Posts
+      responses:
+        "200":
+          $ref: '#/components/responses/post'
+        "404":
+          $ref: '#/components/responses/resource_not_found'
+
+components:
+  schemas:
+    post:
+      type: object
+      required: ['id', 'title', 'content', 'author', 'created_at', 'updated_at']
+      properties:
+        id:
+          type: number
+          readOnly: true
+        author:
+          allOf:
+            - $ref: '#/components/schemas/user'
+            - readOnly: true
+        title:
+          type: string
+        content:
+          type: string
+        cover_image:
+          type: object
+          nullable: true
+          properties:
+            name:
+              type: string
+            url:
+              type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      additionalProperties: false
+
+    user:
+      type: object
+      required: ['id', 'email', 'created_at', 'updated_at']
+      properties:
+        id:
+          type: number
+          readOnly: true
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+        full_name:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      additionalProperties: false
+
+    error:
+      type: object
+      required: ['message']
+      properties:
+        message:
+          type: string
+      additionalProperties: false
+
+    validation_error:
+      type: object
+      required: ['message', 'field', 'rule']
+      properties:
+        message:
+          type: string
+        field:
+          type: string
+        rule:
+          type: string
+        args:
+          oneOf:
+            - type: object
+            - type: array
+      additionalProperties: false
+
+    pagination_meta:
+      type: object
+      required: ['total', 'per_page', 'current_page', 'last_page', 'first_page', 'first_page_url', 'last_page_url', 'next_page_url', 'previous_page_url']
+      properties:
+        total:
+          type: number
+        per_page:
+          type: number
+        current_page:
+          type: number
+        last_page:
+          type: number
+        first_page:
+          type: number
+        first_page_url:
+          type: string
+        last_page_url:
+          type: string
+        next_page_url:
+          type: string
+          nullable: true
+        previous_page_url:
+          type: string
+          nullable: true
+      additionalProperties: false
+
+
+  requestBodies:
+    create_post:
+      description: "Create new a post"
+      content:
+        multipart/form-data:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/post'
+              - type: object
+                required: ['cover_image']
+                properties:
+                  cover_image:
+                    type: string
+                    format: binary
+                    readOnly: false
+
+
+  responses:
+    resource_not_found:
+      description: "Resource not found"
+      content:
+        application/json:
+          schema:
+            type: object
+            required: ['errors']
+            properties:
+              errors:
+                type: array
+                minItems: 1
+                items:
+                  $ref: '#/components/schemas/error'
+            additionalProperties: false
+
+    unauthorized:
+      description: "User not logged in"
+      content:
+        application/json:
+          schema:
+            type: object
+            required: ['errors']
+            properties:
+              errors:
+                type: array
+                minItems: 1
+                items:
+                  $ref: '#/components/schemas/error'
+            additionalProperties: false
+
+    validation_error:
+      description: "Invalid user input"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              errors:
+                type: array
+                minItems: 1
+                items:
+                  $ref: '#/components/schemas/validation_error'
+            additionalProperties: false
+
+    post:
+      description: "Post"
+      content:
+        application/json:
+          schema:
+            type: object
+            required: ['data']
+            properties:
+              data:
+                $ref: '#/components/schemas/post'
+            additionalProperties: false
+
+
+    posts:
+      description: "Posts List"
+      content:
+        application/json:
+          schema:
+            type: object
+            required: ['data', 'meta']
+            properties:
+              meta:
+                $ref: '#/components/schemas/pagination_meta'
+              data:
+                type: array
+                items:
+                  $ref: '#/components/schemas/post'
+            additionalProperties: false
